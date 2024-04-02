@@ -1,0 +1,43 @@
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
+
+# Load the dataset from Kaggle competition
+# Enter your computers file path here 
+train_df = pd.read_csv('file.path', encoding='ISO-8859-1')
+product_description_df = pd.read_csv('file.path', encoding='ISO-8859-1')
+
+# Merge train dataset with product descriptions dataset
+merged_df = pd.merge(train_df, product_description_df, on='product_uid')
+
+# Create TF-IDF vectorizer
+tfidf_vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)  # Adjust max_features as needed
+tfidf_matrix = tfidf_vectorizer.fit_transform(merged_df['product_description'])
+
+# Compute cosine similarity between products
+cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+# Function to recommend similar products based on a given product ID
+def recommend_similar_products(product_id, cosine_sim=cosine_sim, merged_df=merged_df, top_n=5):
+    # Get index of the product in the dataset
+    product_index = merged_df[merged_df['product_uid'] == product_id].index[0]
+
+    # Get similarity scores for all products
+    similar_product_scores = list(enumerate(cosine_sim[product_index]))
+
+    # Sort products by similarity score (in descending order)
+    similar_product_scores = sorted(similar_product_scores, key=lambda x: x[1], reverse=True)
+
+    # Get indices of top similar products (excluding the queried product itself)
+    similar_product_indices = [x[0] for x in similar_product_scores[1:top_n + 1]]
+
+    # Get details of top similar products
+    similar_products = merged_df.iloc[similar_product_indices]
+
+    return similar_products[['product_title', 'product']]
+
+# Ex: Recommend similar products for a given product ID
+product_id = 100001
+recommended_products = recommend_similar_products(product_id)
+print("Recommended products similar to Product ID", product_id, ":")
+print(recommended_products)
